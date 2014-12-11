@@ -55,15 +55,10 @@ record System : Nat -> Type where
              (upper : Matrix n n Float) ->
              (pivot : Matrix n n Float) -> System n
 
--- Construct an nxn identity matrix
-identity : (n : Nat) -> Matrix n n Float
-identity n = map (\r => map (\c => if r == c then 1 else 0) range) range
-
 -- Create a pivot matrix for a given coefficient matrix
 pivotize : {n : Nat} -> Matrix n n Float -> Matrix n n Float
-pivotize {n} rows = let ident = identity n
-                        pos = map (chooseRow rows) range
-                    in foldl swapRows ident $ zip range pos where
+pivotize {n} rows = let pos = map (chooseRow rows) range
+                    in foldl swapRows Id $ zip range pos where
   chooseRow : Vect n (Vect n Float) -> Fin n -> Fin n
   chooseRow rows i = foldl (\a,r =>
                      if r > i &&
