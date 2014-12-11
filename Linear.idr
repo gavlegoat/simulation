@@ -34,17 +34,22 @@ Note that because the matrices we are interested in are all square they can
 all be LUP factorized.
 -}
 
+-- CONSIDER ADDING PROOFS THAT THE LOWER AND UPPER MATRICES ARE IN FACT LOWER
+--     AND UPPER TRIANGULAR TO THE SYSTEM TYPE AND THE SOLVELOWER AND
+--     SOLVEUPPER FUNCTIONS
+
 module Linear
 
 -- Note Data.Matrix is not in the latest release at time of writing (0.9.15.1)
--- so the Matrix.idr file was copied from the repository and compiled
+-- so the Matrix.idr file was copied from the repository and compiled manually
 import Data.Matrix
 
 %default total
+%access private
 
 -- A System is actually just a matrix which has been PLU factorized so it can
 -- easily be applied to any result vector
-public
+abstract
 record System : Nat -> Type where
   MkSystem : (lower : Matrix n n Float) ->
              (upper : Matrix n n Float) ->
@@ -57,8 +62,8 @@ identity n = map (\r => map (\c => if r == c then 1 else 0) range) range
 -- Create a pivot matrix for a given coefficient matrix
 pivotize : {n : Nat} -> Matrix n n Float -> Matrix n n Float
 pivotize {n} rows = let ident = identity n
-                        pos = map (chooseRow rows) range in
-                    foldl swapRows ident $ zip range pos where
+                        pos = map (chooseRow rows) range
+                    in foldl swapRows ident $ zip range pos where
   chooseRow : Vect n (Vect n Float) -> Fin n -> Fin n
   chooseRow rows i = foldl (\a,r =>
                      if r > i &&
@@ -110,32 +115,25 @@ createSystemFromMatrix m = let p      = pivotize m
                                (l, u) = decompose (p <> m)
                            in MkSystem l u p
 
+-- A helper function for solveLower and solveUpper below. Both use the same
+-- function but one folds from the left and one folds from the right.
+solve_help : Vect n Float -> (Vect n Float, Float, Fin n) -> Vect n Float
+solve_help acc (r, x, i) = replaceAt i ((x - (acc <.> r)) / index i r) acc
+
+-- Given a lower triangular matrix and a result vector, find a solution, i.e.
+-- if [solveLower L b = x] then Lx=b.
+solveLower : {n : Nat} -> Matrix n n Float -> Vect n Float -> Vect n Float
+solveLower {n} l b = foldl solve_help (replicate n 0) $ zip3 l b range
+
+-- Given an upper triangular matrix and a result vector, find a solution such
+-- that if [solveUpper U y = x] then Ux=y.
+solveUpper : {n : Nat} -> Matrix n n Float -> Vect n Float -> Vect n Float
+solveUpper {n} u y = foldr (flip solve_help) (replicate n 0) $ zip3 u y range
+
 -- Solve the given system using the given result vector, i.e. [solve s b] finds
 -- the vector x such that (for [s = createSystemFromMatrix A]) Ax=b. First we
 -- Ly=Pb for y and then use that to find x such that Ux=y.
+public
 solve : System n -> Vect n Float -> Vect n Float
-solve s b = let y = solveLower (lower s) $ (pivot s) </> b
-            in solveUpper (upper s) y where
-  solveLower : Matrix n n Float -> Vect n Float -> Vect n Float
-  solveLower = ?solveLower_rhs
-  solveUpper : Matrix n n Float -> Vect n Float -> Vect n Float
-  solveUpper = ?solveUpper_rhs
-
-{-
-solveLower:
-[a11,0,  0  ] [y1]   [b1]     y1 = b1 / a11
-[a21,a22,0  ] [y2] = [b2] ==> y2 = (b2 - a21*y1) / a22
-[a31,a32,a33] [y3]   [b3]     y3 = (b3 - a31*y1 - a32*y2) / a33
-        1   /      n-1          \
-y_n = ---- | b_n -  ∑ a_ni * y_i |
-      a_nn  \      i=1          /
-
-solveUpper:
-[a11,a12,a13] [x1]   [y1]     x1 = (y1 - x3*a13 - x2*a12) / a11
-[0,  a22,a23] [x2] = [y2] ==> x2 = (y2 - x3*a23) / a22
-[0,  0,  a33] [x3]   [y3]     x3 = y3 / a33
-(n goes from highest to lowest)
-        1   /       max           \
-x_n = ---- | y_n -   ∑  a_ni * x_i |
-      a_nn  \      i=n+1          /
--}
+solve s b = let y = solveLower (lower s) ((pivot s) </> b)
+            in solveUpper (upper s) y
