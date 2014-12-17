@@ -10,9 +10,3 @@ incorporate them.
 
 So far the project consists only of a module for solving systems of equations,
 which is done by LU factorization.
-
-ATS
----
-
-In the `ats` directory there is a version of the same program written in ATS
-for comparison purposes. Currently there's just about nothing in there.
