@@ -8,5 +8,7 @@ performance is not great yet I haven't put any particular effort into making
 the code efficient. When standard techniques for improving the efficiency of
 Idris code start to emerge I will incorporate them.
 
-So far the project consists only of a module for solving systems of equations,
-which is done by LU factorization.
+So far the project consists only of a module for solving systems of equations.
+This can be done either with Gaussian elimination or LU decomposition, but
+Gaussian elimination should be faster in most situations that will arise in the
+simulator.
