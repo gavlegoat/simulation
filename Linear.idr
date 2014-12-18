@@ -1,19 +1,8 @@
 {-
-A module for solving linear systems of equations. This serves as the
-mathematical basis for the simulator. We use an LU decomposition with a pivot
-matrix, i.e. a system is a set of matricese P, L, and U, such that
-
-> PA=LU
-
-The pivot matrix is defined in order to keep the numerical computations more
-accurate by reducing the amount of division by small numbers needed.
-
-Then to solve we use
-
-> Ax=b => (P^{ -1} LU)x=b => LUx=Pb => Ly=Pb and Ux=y
-
-Note that because the matrices we are interested in are all square they can
-all be LUP factorized.
+A module for solving systems of equations in matrix form. It is possible to do
+this by either LU decomposition or Gaussian elemination depending on which is
+better in each situation. In most cases for this project Gaussian elimination
+should be faster.
 -}
 
 module Linear
@@ -22,16 +11,18 @@ module Linear
 -- so the Matrix.idr file was copied from the repository and compiled manually
 import Data.Matrix
 
+-- CONSIDER ADDING A PROOF THAT MATRICES ARE LOWER/UPPER
+
 %default total
 %access private
 
--- A System is actually just a matrix which has been PLU factorized so it can
+-- A LUSystem is actually just a matrix which has been PLU factorized so it can
 -- easily be applied to any result vector
 abstract
-record System : Nat -> Type where
-  MkSystem : (lower : Matrix n n Float) ->
-             (upper : Matrix n n Float) ->
-             (pivot : Matrix n n Float) -> System n
+record LUSystem : Nat -> Type where
+  MkLUSystem : (lower : Matrix n n Float) ->
+               (upper : Matrix n n Float) ->
+               (pivot : Matrix n n Float) -> LUSystem n
 
 -- Create a pivot matrix for a given coefficient matrix
 pivotize : {n : Nat} -> Matrix n n Float -> Matrix n n Float
@@ -81,10 +72,10 @@ decompose {n=S k} rows =
 
 -- Create a system by pivotizing and LU factorizing the given matrix
 public
-createSystemFromMatrix : Matrix n n Float -> System n
-createSystemFromMatrix m = let p      = pivotize m
-                               (l, u) = decompose (p <> m)
-                           in MkSystem l u p
+createLUSystemFromMatrix : Matrix n n Float -> LUSystem n
+createLUSystemFromMatrix m = let p      = pivotize m
+                                 (l, u) = decompose (p <> m)
+                             in MkLUSystem l u p
 
 -- A helper function for solveLower and solveUpper below. Both use the same
 -- function but one folds from the left and one folds from the right.
@@ -92,19 +83,40 @@ solve_help : Vect n Float -> (Vect n Float, Float, Fin n) -> Vect n Float
 solve_help acc (r, x, i) = replaceAt i ((x - (acc <.> r)) / index i r) acc
 
 -- Given a lower triangular matrix and a result vector, find a solution, i.e.
--- if [solveLower L b = x] then Lx=b.
+-- if [solveLower L b = x] then [L </> x = b].
 solveLower : {n : Nat} -> Matrix n n Float -> Vect n Float -> Vect n Float
 solveLower {n} l b = foldl solve_help (replicate n 0) $ zip3 l b range
 
 -- Given an upper triangular matrix and a result vector, find a solution such
--- that if [solveUpper U y = x] then Ux=y.
+-- that if [solveUpper U y = x] then [U </> x = y].
 solveUpper : {n : Nat} -> Matrix n n Float -> Vect n Float -> Vect n Float
 solveUpper {n} u y = foldr (flip solve_help) (replicate n 0) $ zip3 u y range
 
 -- Solve the given system using the given result vector, i.e. [solve s b] finds
--- the vector x such that (for [s = createSystemFromMatrix A]) Ax=b. First we
--- Ly=Pb for y and then use that to find x such that Ux=y.
+-- the vector [x] such that (for [s = createLUSystemFromMatrix A])
+-- [A </> x = b]. First we solve [L </> y = P </> b] for [y] and then use that
+-- to find [x] such that [U </> x = y].
 public
-solve : System n -> Vect n Float -> Vect n Float
-solve s b = let y = solveLower (lower s) ((pivot s) </> b)
-            in solveUpper (upper s) y
+luSolve : LUSystem n -> Vect n Float -> Vect n Float
+luSolve s b = let y = solveLower (lower s) ((pivot s) </> b)
+              in solveUpper (upper s) y
+
+-- Perform Gaussian elimination to get an upper triangular matrix
+eliminate : Matrix n n Float -> Vect n Float ->
+            (Matrix n n Float, Vect n Float)
+eliminate a b = foldl eliminate_help (a, b) range where
+  eliminate_help : (Matrix n n Float, Vect n Float) -> Fin n ->
+                   (Matrix n n Float, Vect n Float)
+  eliminate_help (a, b) i = unzip $ map (\r => if r <= i
+    then (index r a, index r b)
+    else let x = index i (index r a) / index i (index i a)
+         in (zipWith (-) (index r a) (map (* x) (index i a)),
+             index r b - x * index i b)) range
+
+-- Solve a system by Gaussian elimination. This should be preferable in most
+-- cases in the circuit simulator.
+public
+gaussianSolve : Matrix n n Float -> Vect n Float -> Vect n Float
+gaussianSolve a b = let p       = pivotize a
+                        (u, b') = eliminate (p <> a) (p </> b)
+                    in solveUpper u b'
