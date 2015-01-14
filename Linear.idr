@@ -7,8 +7,7 @@ should be faster.
 
 module Linear
 
--- Note Data.Matrix is not in the latest release at time of writing (0.9.15.1)
--- so the Matrix.idr file was copied from the repository and compiled manually
+import Data.Fin
 import Data.Matrix
 
 -- CONSIDER ADDING A PROOF THAT MATRICES ARE LOWER/UPPER
