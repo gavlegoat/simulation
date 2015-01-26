@@ -36,6 +36,7 @@ predAndStrengthen (FS n) = n
 
 -- Convert a circuit to a system of equations (in matrix-vector form). The
 -- number of equations is one less than the number of nodes.
+public
 circuitToSystem : Circuit (S n) -> (Matrix (S n) (S n) Float, Vect (S n) Float)
 circuitToSystem = unzip . map nodeToEquation . tail .
                   Data.VectType.Vect.zip range where
