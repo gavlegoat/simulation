@@ -10,7 +10,7 @@ Idris code start to emerge I will incorporate them.
 
 The mathematical basis for the simulator is the `Linear` module which contains
 definitions for solving linear systems of equations. Equations can be solved by
-either Gaussian elimination of LU decomposition but Gaussiam elimination should
+either Gaussian elimination of LU decomposition but Gaussian elimination should
 be more efficient for most cases.
 
 The definitions of datatypes and the code that converts a circuit into a system
@@ -18,4 +18,4 @@ of equations for the `Linear` module is in `Solver.idr`. Currently only current
 sources and resistors are supported.
 
 The `Parser` module currently has nothing in it but will eventually take
-netlist files and creat circuits for the `Solver` module.
+netlist files and create circuits for the `Solver` module.
