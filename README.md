@@ -17,5 +17,5 @@ The definitions of datatypes and the code that converts a circuit into a system
 of equations for the `Linear` module is in `Solver.idr`. Currently only current
 sources and resistors are supported.
 
-The `Parser` module currently has nothing in it but will eventually take
-netlist files and create circuits for the `Solver` module.
+The `Parser` module converts a netlist file into a `Circuit` as defined in
+`Solver.idr`.

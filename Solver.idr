@@ -7,7 +7,6 @@ module Solver
 
 import Data.Fin
 import Data.Matrix
-
 import Linear
 
 %default total
@@ -19,7 +18,8 @@ import Linear
 public
 data Component : (n : Nat) -> Type where
   Resistor : Float -> (Fin n, Fin n) -> Component n   -- resistance and nodes
-  Current : Float -> Fin n -> Component n   -- current, node current flows into
+  -- Current and nodes, the current source points toward the second node
+  Current : Float -> (Fin n, Fin n) -> Component n
 
 -- A circuit is represented as a list of nodes (implicit, the nodes are just
 -- numbered from 0 to n-1) where each node is connected to a list of
@@ -50,8 +50,8 @@ circuitToSystem = unzip . map nodeToEquation . tail .
        else if o > m
          then (updateAt so (+ (1 / r)) (updateAt sm (\x => x - (1 / r)) xs), x)
          else (updateAt sm (+ (1 / r)) (updateAt so (\x => x - (1 / r)) xs), x)
-  nte_help l (xs, x) (Current i m) = if l == m then (xs, x + i)
-                                               else (xs, x - i)
+  nte_help l (xs, x) (Current i (_, m)) = if l == m then (xs, x + i)
+                                                    else (xs, x - i)
   nodeToEquation : {n : Nat} -> (Fin (S (S n)), List (Component (S (S n)))) ->
                    (Vect (S n) Float, Float)
   nodeToEquation {n} (m, xs) = foldl (nte_help m) (replicate (S n) 0, 0) xs
